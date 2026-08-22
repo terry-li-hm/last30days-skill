@@ -248,5 +248,64 @@ class NormalizeV3Tests(unittest.TestCase):
         )
         self.assertEqual([], normalized)
 
+    def test_arxiv_keeps_paper_outside_community_30_day_window(self):
+        """#946: a paper older than 30 days but inside the adapter's 365-day
+        recency window must survive normalize, not vanish as no-results."""
+        items = [
+            {
+                "id": "http://arxiv.org/abs/2604.00001v1",
+                "title": "Agent Memory as a Database",
+                "url": "https://arxiv.org/abs/2604.00001v1",
+                "summary": "We propose a memory layer for agents.",
+                "author": "Ada Lovelace",
+                "authors": ["Ada Lovelace"],
+                "date": "2026-04-01",
+                "relevance": 0.8,
+                "why_relevant": "arXiv paper (Ada Lovelace, 2026-04-01)",
+            }
+        ]
+        normalized = normalize.normalize_source_items(
+            "arxiv", items, "2026-05-17", "2026-06-16"
+        )
+        self.assertEqual(1, len(normalized))
+        self.assertEqual("Agent Memory as a Database", normalized[0].title)
+        self.assertEqual("2026-04-01", normalized[0].published_at)
+        self.assertEqual("high", normalized[0].date_confidence)
+
+    def test_arxiv_still_drops_papers_older_than_recency_days(self):
+        items = [
+            {
+                "id": "http://arxiv.org/abs/1706.00001v1",
+                "title": "Do Steph Curry and Klay Thompson Have Hot Hands?",
+                "url": "https://arxiv.org/abs/1706.00001v1",
+                "summary": "A 2017 sports-statistics paper.",
+                "author": "Someone",
+                "authors": ["Someone"],
+                "date": "2017-06-12",
+                "relevance": 0.4,
+                "why_relevant": "arXiv paper (Someone, 2017-06-12)",
+            }
+        ]
+        normalized = normalize.normalize_source_items(
+            "arxiv", items, "2026-05-17", "2026-06-16"
+        )
+        self.assertEqual([], normalized)
+
+    def test_reddit_still_drops_items_outside_community_window(self):
+        items = [
+            {
+                "id": "abc",
+                "title": "Old thread",
+                "url": "https://reddit.com/r/x/comments/abc",
+                "selftext": "posted months ago",
+                "subreddit": "MachineLearning",
+                "date": "2026-04-01",
+            }
+        ]
+        normalized = normalize.normalize_source_items(
+            "reddit", items, "2026-05-17", "2026-06-16"
+        )
+        self.assertEqual([], normalized)
+
 if __name__ == "__main__":
     unittest.main()

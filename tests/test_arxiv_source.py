@@ -101,6 +101,26 @@ def test_url_prefers_alternate_over_pdf():
 
 # ---- recency cutoff (also off-topic gating) ----
 
+def test_recency_window_start_is_365_days_before_to_date():
+    assert arxiv.recency_window_start("2026-06-16") == "2025-06-16"
+
+
+def test_mid_window_paper_survives_adapter_and_normalize():
+    """#946: adapter keeps a 90-day-old paper; normalize used to drop it
+    against the community 30-day window. Both layers must keep it."""
+    from lib import normalize
+
+    published = (NOW - timedelta(days=90)).strftime("%Y-%m-%dT12:00:00Z")
+    resp = {"results": [_entry("Mid-window paper", published)]}
+    parsed = arxiv.parse_arxiv_response(resp, query="mid window", today=NOW)
+    assert len(parsed) == 1
+    from_date = (NOW - timedelta(days=30)).date().isoformat()
+    to_date = NOW.date().isoformat()
+    kept = normalize.normalize_source_items("arxiv", parsed, from_date, to_date)
+    assert len(kept) == 1
+    assert kept[0].title == "Mid-window paper"
+
+
 def test_recency_cutoff_drops_stale_paper():
     stale = (NOW - timedelta(days=arxiv.RECENCY_DAYS + 30)).strftime("%Y-%m-%dT12:00:00Z")
     resp = {"results": [_entry("Old Paper", stale)]}

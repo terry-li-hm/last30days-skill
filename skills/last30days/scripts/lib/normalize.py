@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlparse
 
-from . import dates, schema
+from . import arxiv, dates, schema
 
 
 def filter_by_date_range(
@@ -76,6 +76,10 @@ def normalize_source_items(
         "jobs": _normalize_jobs,
         "linkedin": _normalize_linkedin,
     }
+    if source == "arxiv":
+        # Research does not trend on a 30-day clock. Honor the adapter's
+        # RECENCY_DAYS window rather than the community from_date (#946).
+        from_date = arxiv.recency_window_start(to_date)
     normalizer = normalizers.get(source)
     if normalizer is None:
         raise ValueError(f"Unsupported source: {source}")

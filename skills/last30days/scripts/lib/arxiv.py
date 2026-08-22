@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from . import log, subproc
@@ -42,7 +42,9 @@ DEPTH_CONFIG = {
 
 # Recency window for arXiv specifically. Papers do not trend daily; a year keeps
 # the source current (the off-topic 2017 paper still drops) without discarding
-# the genuinely-relevant work from the last few months.
+# the genuinely-relevant work from the last few months. Normalization must use
+# this same window; applying the community 30-day filter drops every paper the
+# adapter already accepted (#946).
 RECENCY_DAYS = 365
 
 SEARCH_TIMEOUT = 30
@@ -59,6 +61,17 @@ def _is_available() -> bool:
 
 def _today() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def recency_window_start(to_date: str) -> str:
+    """YYYY-MM-DD start of the arXiv recency window ending at ``to_date``.
+
+    ``normalize.normalize_source_items`` uses this so the community 30-day
+    window does not drop papers the adapter already accepted under
+    ``RECENCY_DAYS``.
+    """
+    end = datetime.strptime(to_date, "%Y-%m-%d").date()
+    return (end - timedelta(days=RECENCY_DAYS)).isoformat()
 
 
 def _build_search_query(topic: str, *, quoted: bool = True) -> str:
